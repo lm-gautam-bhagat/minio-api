@@ -1,0 +1,13 @@
+minioroot:
+  user: helloword
+  pass: password
+
+network:
+  host: "0.0.0.0"
+  port: 6060
+  max_connections: 100      
+  timeout_seconds: 120  
+
+logger:
+  filepath: app.log
+  level: 1
