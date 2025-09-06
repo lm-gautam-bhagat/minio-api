@@ -8,42 +8,45 @@ import (
 	"syscall"
 
 	"github.com/gin-gonic/gin"
-	"github.com/lm-gautam-bhagat/minio-server/api/packages/minio"
+	minioclient "github.com/lm-gautam-bhagat/minio-server/api/packages/minio"
 	"github.com/lm-gautam-bhagat/minio-server/api/packages/router"
 	"github.com/lm-gautam-bhagat/minio-server/config"
 	"github.com/lm-gautam-bhagat/minio-server/log"
+	"github.com/lm-gautam-bhagat/minio-server/storage"
 )
 
 type Server struct {
 	cfg *config.ConfigObject
+	str *storage.StorageClient
 }
 
-func NewServer(cfg *config.ConfigObject) *Server {
+func NewServer(cfg *config.ConfigObject, str *storage.StorageClient) *Server {
 	return &Server{
-		cfg: cfg,
+		cfg: cfg, str: str,
 	}
 }
 
 func (s *Server) MapRoutes(r **gin.Engine) {
 	handlers := []router.HTTPHandlerProvider{
-		minio.NewMinioModule(),
+		minioclient.NewMinioModule(s.str),
 	}
 	engine := *r // dereference *gin.Engine
 
 	for _, handler := range handlers {
 		for _, hldr := range handler.GetHTTPHandler() {
 			wrapped := APIWrap(hldr.Handler)
+			path := fmt.Sprintf("/api/v%d/%s", hldr.Version, hldr.Path)
 			switch hldr.Method {
 			case http.MethodGet:
-				engine.GET(hldr.Path, wrapped)
+				engine.GET(path, wrapped)
 			case http.MethodPost:
-				engine.POST(hldr.Path, wrapped)
+				engine.POST(path, wrapped)
 			case http.MethodPut:
-				engine.PUT(hldr.Path, wrapped)
+				engine.PUT(path, wrapped)
 			case http.MethodDelete:
-				engine.DELETE(hldr.Path, wrapped)
+				engine.DELETE(path, wrapped)
 			default:
-				engine.Handle(hldr.Method, hldr.Path, wrapped)
+				engine.Handle(hldr.Method, path, wrapped)
 			}
 		}
 	}

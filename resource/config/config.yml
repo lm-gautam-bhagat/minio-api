@@ -1,6 +1,6 @@
 minioroot:
-  user: helloword
-  pass: password
+  user: minioadmin
+  pass: minioadmin
 
 network:
   host: "0.0.0.0"
