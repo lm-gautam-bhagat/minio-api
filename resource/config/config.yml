@@ -4,7 +4,7 @@ minioroot:
 
 network:
   host: "0.0.0.0"
-  port: 6060
+  port: 1512
   max_connections: 100      
   timeout_seconds: 120  
 

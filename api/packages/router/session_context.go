@@ -2,6 +2,7 @@ package router
 
 import (
 	"context"
+	"mime/multipart"
 	"time"
 
 	"github.com/gin-gonic/gin"
@@ -75,4 +76,12 @@ func (sc *SessionContext) GetContextWithTimeout(timeout time.Duration) (context.
 
 func (sc *SessionContext) GetContext() (context.Context, context.CancelFunc) {
 	return context.WithCancel(sc.ginCtx.Request.Context())
+}
+
+func (sc *SessionContext) BindForm(obj any) error {
+	return sc.ginCtx.ShouldBind(obj)
+}
+
+func (sc *SessionContext) FormFile(name string) (*multipart.FileHeader, error) {
+	return sc.ginCtx.FormFile(name)
 }

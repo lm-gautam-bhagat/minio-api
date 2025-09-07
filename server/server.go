@@ -75,6 +75,7 @@ func (s *Server) StartServer() {
 		Handler: router,
 	}
 
+	log.Info("running: ", fmt.Sprintf("http://%s/", addr))
 	sigChan := make(chan os.Signal, 1)
 	signal.Notify(sigChan, syscall.SIGINT, syscall.SIGTERM)
 

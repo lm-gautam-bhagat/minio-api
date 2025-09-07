@@ -4,6 +4,7 @@ import (
 	"net/http"
 
 	"github.com/lm-gautam-bhagat/minio-server/api/packages/router"
+	"github.com/lm-gautam-bhagat/minio-server/log"
 )
 
 type Handler struct {
@@ -35,6 +36,18 @@ func (h *Handler) GetHTTPHandler() []*router.HTTPHandler {
 			Method:  http.MethodPost,
 			Path:    "buckets/new",
 			Handler: h.CreateBucket,
+		},
+		{
+			Version: 1,
+			Method:  http.MethodPost,
+			Path:    "buckets/:bucket/upload",
+			Handler: h.UploadFile,
+		},
+		{
+			Version: 1,
+			Method:  http.MethodPost,
+			Path:    "buckets/:bucket/upload/image/string",
+			Handler: h.UploadImageBase64,
 		},
 	}
 }
@@ -84,4 +97,79 @@ func (h *Handler) CreateBucket(c *router.SessionContext) {
 		return
 	}
 	c.Respond(http.StatusCreated, "", "")
+}
+
+func (h *Handler) UploadFile(c *router.SessionContext) {
+	ctx, cancel := c.GetContext()
+	defer cancel()
+
+	bucket := c.Param("bucket")
+
+	fileHeader, err := c.FormFile("file")
+	if err != nil {
+		log.Error("Error while getting file: ", err.Error())
+		c.RespondError(router.ErrResponseObj{Code: http.StatusBadRequest, Message: "file is required"})
+		return
+	}
+
+	file, err := fileHeader.Open()
+	if err != nil {
+		log.Error("Error while opening file: ", err.Error())
+		c.RespondError(router.ErrResponseObj{Code: http.StatusInternalServerError, Message: "cannot open uploaded file"})
+		return
+
+	}
+	defer file.Close()
+
+	stream := UploadFile{
+		bucket:      bucket,
+		fileName:    fileHeader.Filename,
+		file:        file,
+		fileSize:    fileHeader.Size,
+		contentType: fileHeader.Header.Get("Content-Type"),
+	}
+
+	url, err := h.service.UploadStream(
+		ctx,
+		stream,
+	)
+	if err != nil {
+		c.RespondError(router.ErrResponseObj{Code: http.StatusInternalServerError, Message: "failed to upload file"})
+		return
+	}
+
+	c.Respond(http.StatusCreated, "public_id", *url)
+}
+
+func (h *Handler) UploadImageBase64(c *router.SessionContext) {
+	ctx, cancel := c.GetContext()
+	defer cancel()
+
+	bucket := c.Param("bucket")
+
+	var req UploadImageStringReq
+
+	err := c.BindJSON(&req)
+	if err != nil {
+		c.RespondError(router.ErrResponseObj{
+			Code:    http.StatusBadRequest,
+			Message: "invalid body request",
+		})
+	}
+
+	stream := UploadFile{
+		bucket: bucket,
+		Base64: req.Base64,
+	}
+
+	url, err := h.service.UploadImageString(
+		ctx,
+		stream,
+	)
+	if err != nil {
+		c.RespondError(router.ErrResponseObj{Code: http.StatusInternalServerError, Message: "failed to upload file"})
+		return
+	}
+
+	c.Respond(http.StatusCreated, "public_id", *url)
 }

@@ -1,7 +1,13 @@
 package storage
 
 import (
+	"bytes"
 	"context"
+	"encoding/base64"
+	"fmt"
+	"io"
+	"net/http"
+	"strings"
 	"time"
 
 	"github.com/minio/minio-go/v7"
@@ -9,7 +15,14 @@ import (
 )
 
 type StorageClient struct {
-	client *minio.Client
+	client   *minio.Client
+	endpoint string
+	secure   bool
+}
+
+type ClientMetadata struct {
+	Endpoint string
+	Secure   bool
 }
 
 func NewStorageClient(minIOEndpoint, minIOAccessID, minIOAccessKey string, useSSL bool) (*StorageClient, error) {
@@ -20,7 +33,15 @@ func NewStorageClient(minIOEndpoint, minIOAccessID, minIOAccessKey string, useSS
 	if err != nil {
 		return nil, err
 	}
-	return &StorageClient{client: c}, nil
+
+	return &StorageClient{client: c, endpoint: minIOEndpoint, secure: useSSL}, nil
+}
+
+func (s *StorageClient) GetClientMetadata() ClientMetadata {
+	return ClientMetadata{
+		Endpoint: s.endpoint,
+		Secure:   s.secure,
+	}
 }
 
 // EnsureBucket creates a bucket if it doesn't exist
@@ -83,5 +104,80 @@ func (m *StorageClient) CreateBucket(ctx context.Context, bucketName string) err
 	if err != nil {
 		return err
 	}
+	return nil
+}
+
+func (m *StorageClient) UploadStream(
+	ctx context.Context,
+	bucket, objectName string,
+	file io.Reader,
+	objectSize int64,
+	contentType string,
+) error {
+	// ensure bucket exists before upload
+	if err := m.EnsureBucket(ctx, bucket); err != nil {
+		return fmt.Errorf("failed to ensure bucket: %w", err)
+	}
+	_, err := m.client.PutObject(
+		ctx,
+		bucket,
+		objectName,
+		file,
+		objectSize,
+		minio.PutObjectOptions{ContentType: contentType},
+	)
+	if err != nil {
+		return fmt.Errorf("failed to upload object: %w", err)
+	}
+
+	return nil
+}
+
+func (s *StorageClient) UploadBase64Image(ctx context.Context, bucketName, objectName, base64Image string) error {
+	var contentType string
+	if idx := strings.Index(base64Image, ","); idx != -1 {
+		prefix := base64Image[:idx]
+		if strings.Contains(prefix, "data:") && strings.Contains(prefix, ";base64") {
+			contentType = strings.TrimPrefix(strings.Split(prefix, ";")[0], "data:")
+		}
+		base64Image = base64Image[idx+1:]
+	}
+
+	imageData, err := base64.StdEncoding.DecodeString(base64Image)
+	if err != nil {
+		return fmt.Errorf("failed to decode base64 image: %w", err)
+	}
+
+	if contentType == "" {
+		contentType = http.DetectContentType(imageData)
+	}
+
+	reader := bytes.NewReader(imageData)
+
+	exists, err := s.client.BucketExists(ctx, bucketName)
+	if err != nil {
+		return fmt.Errorf("failed to check bucket: %w", err)
+	}
+	if !exists {
+		if err := s.client.MakeBucket(ctx, bucketName, minio.MakeBucketOptions{}); err != nil {
+			return fmt.Errorf("failed to create bucket: %w", err)
+		}
+	}
+
+	// Upload
+	_, err = s.client.PutObject(
+		ctx,
+		bucketName,
+		objectName,
+		reader,
+		int64(len(imageData)),
+		minio.PutObjectOptions{
+			ContentType: contentType,
+		},
+	)
+	if err != nil {
+		return fmt.Errorf("failed to upload image: %w", err)
+	}
+
 	return nil
 }
