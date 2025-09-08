@@ -23,7 +23,12 @@ func main() {
 		fmt.Printf("error while initializing storage client: %+s", err.Error())
 		return
 	}
-	s := server.NewServer(cfg, strClient)
+	strAdmin, err := storage.NewStorageAdmin(endpoint, cfg.MinioRoot.User, cfg.MinioRoot.Pass, false)
+	if err != nil {
+		fmt.Printf("error while initializing storage admin: %+s", err.Error())
+		return
+	}
+	s := server.NewServer(cfg, strClient, strAdmin)
 	err = s.Setup()
 	if err != nil {
 		return

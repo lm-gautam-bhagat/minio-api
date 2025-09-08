@@ -184,7 +184,7 @@ func (h *Handler) PresignedURL(c *router.SessionContext) {
 	if err != nil {
 		c.RespondError(router.ErrResponseObj{
 			Code:    http.StatusInternalServerError,
-			Message: "failed to et url",
+			Message: "failed to get url",
 		})
 	}
 	c.Respond(http.StatusCreated, "public_id", *url)

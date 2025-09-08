@@ -8,6 +8,7 @@ import (
 	"syscall"
 
 	"github.com/gin-gonic/gin"
+	mapiadmin "github.com/lm-gautam-bhagat/minio-server/api/packages/admin"
 	minioclient "github.com/lm-gautam-bhagat/minio-server/api/packages/minio"
 	"github.com/lm-gautam-bhagat/minio-server/api/router"
 	"github.com/lm-gautam-bhagat/minio-server/config"
@@ -16,19 +17,21 @@ import (
 )
 
 type Server struct {
-	cfg *config.ConfigObject
-	str *storage.StorageClient
+	cfg       *config.ConfigObject
+	strClient *storage.StorageClient
+	strAdmin  *storage.StorageAdmin
 }
 
-func NewServer(cfg *config.ConfigObject, str *storage.StorageClient) *Server {
+func NewServer(cfg *config.ConfigObject, strClient *storage.StorageClient, strAdmin *storage.StorageAdmin) *Server {
 	return &Server{
-		cfg: cfg, str: str,
+		cfg: cfg, strClient: strClient, strAdmin: strAdmin,
 	}
 }
 
 func (s *Server) MapRoutes(r **gin.Engine) {
 	handlers := []router.HTTPHandlerProvider{
-		minioclient.NewMinioModule(s.str),
+		minioclient.NewMinioModule(s.strClient),
+		mapiadmin.NewMinioAdminModule(s.strAdmin, s.strClient),
 	}
 	engine := *r // dereference *gin.Engine
 
@@ -90,13 +93,14 @@ func (s *Server) StartServer() {
 	select {
 	case <-errChan:
 		fmt.Println("server error")
-		log.Close()
+
 	case <-sigChan:
 		fmt.Println("intrupt is called")
-		log.Close()
+
 	}
 
 	srv.Close()
+	log.Close()
 }
 
 func APIWrap(h func(*router.SessionContext)) gin.HandlerFunc {
