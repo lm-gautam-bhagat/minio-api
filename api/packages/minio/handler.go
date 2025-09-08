@@ -1,9 +1,9 @@
-package minioclient
+package minioapi
 
 import (
 	"net/http"
 
-	"github.com/lm-gautam-bhagat/minio-server/api/packages/router"
+	"github.com/lm-gautam-bhagat/minio-server/api/router"
 	"github.com/lm-gautam-bhagat/minio-server/log"
 )
 
@@ -19,12 +19,6 @@ func NewHandler(ser ServiceI) *Handler {
 
 func (h *Handler) GetHTTPHandler() []*router.HTTPHandler {
 	return []*router.HTTPHandler{
-		{
-			Version: 1,
-			Method:  http.MethodGet,
-			Path:    "home",
-			Handler: h.Home,
-		},
 		{
 			Version: 1,
 			Method:  http.MethodGet,
@@ -48,6 +42,12 @@ func (h *Handler) GetHTTPHandler() []*router.HTTPHandler {
 			Method:  http.MethodPost,
 			Path:    "buckets/:bucket/upload/image/string",
 			Handler: h.UploadImageBase64,
+		},
+		{
+			Version: 1,
+			Method:  http.MethodGet,
+			Path:    "buckets/:bucket/:object/url",
+			Handler: h.PresignedURL,
 		},
 	}
 }
@@ -171,5 +171,21 @@ func (h *Handler) UploadImageBase64(c *router.SessionContext) {
 		return
 	}
 
+	c.Respond(http.StatusCreated, "public_id", *url)
+}
+
+func (h *Handler) PresignedURL(c *router.SessionContext) {
+	ctx, cancel := c.GetContext()
+	defer cancel()
+
+	bucket := c.Param("bucket")
+	obj := c.Param("object")
+	url, err := h.service.Presigned(ctx, bucket, obj)
+	if err != nil {
+		c.RespondError(router.ErrResponseObj{
+			Code:    http.StatusInternalServerError,
+			Message: "failed to et url",
+		})
+	}
 	c.Respond(http.StatusCreated, "public_id", *url)
 }

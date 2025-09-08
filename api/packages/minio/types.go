@@ -1,4 +1,4 @@
-package minioclient
+package minioapi
 
 import (
 	"io"

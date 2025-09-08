@@ -1,4 +1,4 @@
-package minioclient
+package minioapi
 
 import (
 	"context"
@@ -72,4 +72,13 @@ func (s *MinioClientService) UploadImageString(ctx context.Context, stream Uploa
 	publicURL := fmt.Sprintf("%s://%s/%s/%s", scheme, mt.Endpoint, stream.bucket, stream.fileName)
 
 	return &publicURL, nil
+}
+
+func (s *MinioClientService) Presigned(ctx context.Context, bucket, object string) (*string, error) {
+	url, err := s.str.PresignedURL(ctx, bucket, object, 2*time.Minute)
+	if err != nil {
+		log.Error("Error while getting presigned URL: ", err.Error())
+		return nil, err
+	}
+	return &url, nil
 }

@@ -1,4 +1,4 @@
-package minioclient
+package minioapi
 
 import "github.com/lm-gautam-bhagat/minio-server/storage"
 

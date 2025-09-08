@@ -9,7 +9,7 @@ import (
 
 	"github.com/gin-gonic/gin"
 	minioclient "github.com/lm-gautam-bhagat/minio-server/api/packages/minio"
-	"github.com/lm-gautam-bhagat/minio-server/api/packages/router"
+	"github.com/lm-gautam-bhagat/minio-server/api/router"
 	"github.com/lm-gautam-bhagat/minio-server/config"
 	"github.com/lm-gautam-bhagat/minio-server/log"
 	"github.com/lm-gautam-bhagat/minio-server/storage"
