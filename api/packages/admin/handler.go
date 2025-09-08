@@ -30,6 +30,12 @@ func (h *AdminHandler) GetHTTPHandler() []*router.HTTPHandler {
 			Path:    "users/create",
 			Handler: h.CreateUser,
 		},
+		{
+			Version: 1,
+			Method:  http.MethodGet,
+			Path:    "users",
+			Handler: h.ListUsers,
+		},
 	}
 }
 
@@ -90,4 +96,18 @@ func (h *AdminHandler) CreateUser(c *router.SessionContext) {
 	}
 
 	c.Respond(http.StatusNoContent, "", "")
+}
+
+func (h *AdminHandler) ListUsers(c *router.SessionContext) {
+	ctx, cancel := c.GetContext()
+	defer cancel()
+
+	users, err := h.service.ListUsers(ctx)
+	if err != nil {
+		c.RespondError(router.ErrResponseObj{
+			Code:    http.StatusInternalServerError,
+			Message: "failed to get users",
+		})
+	}
+	c.Respond(http.StatusAccepted, "users", users)
 }

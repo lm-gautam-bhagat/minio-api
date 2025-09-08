@@ -69,3 +69,24 @@ func (a *StorageAdmin) HealthCheck(ctx context.Context) error {
 	}
 	return nil
 }
+
+func (a *StorageAdmin) GetAdmin() *madmin.AdminClient {
+	return a.admin
+}
+
+func (a *StorageAdmin) AddCannedPolicy(ctx context.Context, policyName string, policyDoc []byte) error {
+	err := a.admin.AddCannedPolicy(ctx, policyName, policyDoc)
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+func (a *StorageAdmin) SetPolicy(ctx context.Context, accessID string, policies []string) (madmin.PolicyAssociationResp, error) {
+	resp, err := a.admin.AttachPolicy(ctx, madmin.PolicyAssociationReq{
+		User:     accessID,
+		Policies: policies,
+	})
+
+	return resp, err
+}

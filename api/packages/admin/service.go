@@ -3,8 +3,10 @@ package mapiadmin
 import (
 	"context"
 
+	"github.com/lm-gautam-bhagat/minio-server/constants"
 	"github.com/lm-gautam-bhagat/minio-server/log"
 	"github.com/lm-gautam-bhagat/minio-server/storage"
+	"github.com/minio/madmin-go/v4"
 )
 
 type MinIOAdminService struct {
@@ -35,4 +37,18 @@ func (s *MinIOAdminService) AddNewUser(ctx context.Context, usr NewUserReq) erro
 		return err
 	}
 	return nil
+}
+
+func (s *MinIOAdminService) SetUserPolicy(ctx context.Context, username, policy string) error {
+	err := s.strAdmin.AddCannedPolicy(ctx, constants.READ_ONLY_POLICY, []byte(constants.PolicyMap[constants.READ_ONLY_POLICY]))
+	return err
+}
+
+func (s *MinIOAdminService) ListUsers(ctx context.Context) (map[string]madmin.UserInfo, error) {
+	users, err := s.strAdmin.ListUsers(ctx)
+	if err != nil {
+		log.Error("Error while getting users: ", err.Error())
+		return nil, err
+	}
+	return users, nil
 }
