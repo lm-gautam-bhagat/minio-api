@@ -36,12 +36,30 @@ func (s *MinIOAdminService) AddNewUser(ctx context.Context, usr NewUserReq) erro
 		log.Error("Error while creating a new user: ", err.Error())
 		return err
 	}
+	err = s.SetUserPolicy(ctx, usr.AccessID, usr.Policy)
+	if err != nil {
+		log.Error("Error while assigning policy to user: ", err.Error())
+		return err
+	}
 	return nil
 }
 
-func (s *MinIOAdminService) SetUserPolicy(ctx context.Context, username, policy string) error {
-	err := s.strAdmin.AddCannedPolicy(ctx, constants.READ_ONLY_POLICY, []byte(constants.PolicyMap[constants.READ_ONLY_POLICY]))
-	return err
+func (s *MinIOAdminService) DeleteUser(ctx context.Context, accessID string) error {
+	err := s.strAdmin.DeleteUser(ctx, accessID)
+	if err != nil {
+		log.Error("Error while creating a new user: ", err.Error())
+		return err
+	}
+
+	return nil
+}
+
+func (s *MinIOAdminService) SetUserPolicy(ctx context.Context, username string, policy constants.PolicyType) error {
+	_, err := s.strAdmin.AttachPolicy(ctx, username, []string{string(policy)})
+	if err != nil {
+		return err
+	}
+	return nil
 }
 
 func (s *MinIOAdminService) ListUsers(ctx context.Context) (map[string]madmin.UserInfo, error) {

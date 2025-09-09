@@ -4,6 +4,7 @@ import (
 	"net/http"
 
 	"github.com/lm-gautam-bhagat/minio-server/api/router"
+	"github.com/lm-gautam-bhagat/minio-server/log"
 )
 
 type AdminHandler struct {
@@ -35,6 +36,12 @@ func (h *AdminHandler) GetHTTPHandler() []*router.HTTPHandler {
 			Method:  http.MethodGet,
 			Path:    "users",
 			Handler: h.ListUsers,
+		},
+		{
+			Version: 1,
+			Method:  http.MethodDelete,
+			Path:    "users/:username",
+			Handler: h.DeleteUser,
 		},
 	}
 }
@@ -80,12 +87,23 @@ func (h *AdminHandler) CreateUser(c *router.SessionContext) {
 
 	err := c.BindJSON(&req)
 	if err != nil {
+		log.Error("Error while parsing request body: ", err.Error())
 		c.RespondError(router.ErrResponseObj{
 			Code:    http.StatusBadRequest,
 			Message: "invalid request body",
 		})
 		return
 	}
+
+	valid := req.Policy.IsValid()
+	if !valid {
+		c.RespondError(router.ErrResponseObj{
+			Code:    http.StatusBadRequest,
+			Message: "invalid policy",
+		})
+		return
+	}
+
 	err = h.service.AddNewUser(ctx, req)
 	if err != nil {
 		c.RespondError(router.ErrResponseObj{
@@ -110,4 +128,19 @@ func (h *AdminHandler) ListUsers(c *router.SessionContext) {
 		})
 	}
 	c.Respond(http.StatusAccepted, "users", users)
+}
+
+func (h *AdminHandler) DeleteUser(c *router.SessionContext) {
+	ctx, cancel := c.GetContext()
+	defer cancel()
+
+	accessID := c.Param("username")
+	err := h.service.DeleteUser(ctx, accessID)
+	if err != nil {
+		c.RespondError(router.ErrResponseObj{
+			Code:    http.StatusInternalServerError,
+			Message: "failed to get users",
+		})
+	}
+	c.Respond(http.StatusAccepted, "", "")
 }

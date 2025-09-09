@@ -2,8 +2,10 @@ package storage
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 
+	"github.com/lm-gautam-bhagat/minio-server/constants"
 	"github.com/minio/madmin-go/v4"
 )
 
@@ -20,12 +22,12 @@ func NewStorageAdmin(minIOEndpoint, minIOAccessID, minIOAccessKey string, useSSL
 	return &StorageAdmin{admin: c}, nil
 }
 
-func (a *StorageAdmin) CreateUser(ctx context.Context, accessKey, secretKey string) error {
-	err := a.admin.AddUser(ctx, accessKey, secretKey)
+func (a *StorageAdmin) CreateUser(ctx context.Context, accessID, secretKey string) error {
+	err := a.admin.AddUser(ctx, accessID, secretKey)
 	if err != nil {
 		return err
 	}
-	err = a.admin.SetUserStatus(ctx, accessKey, madmin.AccountEnabled)
+	err = a.admin.SetUserStatus(ctx, accessID, madmin.AccountEnabled)
 	if err != nil {
 		return err
 	}
@@ -33,18 +35,18 @@ func (a *StorageAdmin) CreateUser(ctx context.Context, accessKey, secretKey stri
 }
 
 // DeleteUser removes a user
-func (a *StorageAdmin) DeleteUser(ctx context.Context, accessKey string) error {
-	return a.admin.RemoveUser(ctx, accessKey)
+func (a *StorageAdmin) DeleteUser(ctx context.Context, accessID string) error {
+	return a.admin.RemoveUser(ctx, accessID)
 }
 
 // EnableUser sets user status to enabled
-func (a *StorageAdmin) EnableUser(ctx context.Context, accessKey string) error {
-	return a.admin.SetUserStatus(ctx, accessKey, madmin.AccountEnabled)
+func (a *StorageAdmin) EnableUser(ctx context.Context, accessID string) error {
+	return a.admin.SetUserStatus(ctx, accessID, madmin.AccountEnabled)
 }
 
 // DisableUser sets user status to disabled
-func (a *StorageAdmin) DisableUser(ctx context.Context, accessKey string) error {
-	return a.admin.SetUserStatus(ctx, accessKey, madmin.AccountDisabled)
+func (a *StorageAdmin) DisableUser(ctx context.Context, accessID string) error {
+	return a.admin.SetUserStatus(ctx, accessID, madmin.AccountDisabled)
 }
 
 // ListUsers retrieves all users and their status
@@ -53,8 +55,8 @@ func (a *StorageAdmin) ListUsers(ctx context.Context) (map[string]madmin.UserInf
 }
 
 // GetUserInfo fetches details about a specific user
-func (a *StorageAdmin) GetUserInfo(ctx context.Context, accessKey string) (*madmin.UserInfo, error) {
-	info, err := a.admin.GetUserInfo(ctx, accessKey)
+func (a *StorageAdmin) GetUserInfo(ctx context.Context, accessID string) (*madmin.UserInfo, error) {
+	info, err := a.admin.GetUserInfo(ctx, accessID)
 	if err != nil {
 		return nil, err
 	}
@@ -74,19 +76,28 @@ func (a *StorageAdmin) GetAdmin() *madmin.AdminClient {
 	return a.admin
 }
 
-func (a *StorageAdmin) AddCannedPolicy(ctx context.Context, policyName string, policyDoc []byte) error {
-	err := a.admin.AddCannedPolicy(ctx, policyName, policyDoc)
+func (a *StorageAdmin) AddCannedPolicy(ctx context.Context, policyName constants.PolicyType, policyDoc []byte) error {
+	err := a.admin.AddCannedPolicy(ctx, string(policyName), policyDoc)
 	if err != nil {
 		return err
 	}
 	return nil
 }
 
-func (a *StorageAdmin) SetPolicy(ctx context.Context, accessID string, policies []string) (madmin.PolicyAssociationResp, error) {
+func (a *StorageAdmin) AttachPolicy(ctx context.Context, accessID string, policies []string) (madmin.PolicyAssociationResp, error) {
 	resp, err := a.admin.AttachPolicy(ctx, madmin.PolicyAssociationReq{
 		User:     accessID,
 		Policies: policies,
 	})
 
 	return resp, err
+}
+
+func (a *StorageAdmin) ListPolicies(ctx context.Context) (map[string]json.RawMessage, error) {
+	policies, err := a.admin.ListCannedPolicies(ctx)
+	return policies, err
+}
+
+func (a *StorageAdmin) GetPolicy(ctx context.Context, policyName string) (*madmin.PolicyInfo, error) {
+	return a.admin.InfoCannedPolicy(ctx, policyName)
 }
